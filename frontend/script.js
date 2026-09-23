@@ -1,73 +1,85 @@
-const userInput = document.getElementById('user-input')
-const sendButton = document.getElementById('send-button')
-const chatBox = document.getElementById('chat-box')
-const clearButton = document.getElementById('clear-button')
-async function sendMessage() {
-  const message = userInput.value
+const resumeInput = document.getElementById('resume-input')
+const jobInput = document.getElementById('job-input')
+const instructionsInput = document.getElementById('instructions-input')
 
-  if (message.trim() === '') {
+const reviewButton = document.getElementById('review-button')
+const resultBox = document.getElementById('result-box')
+
+async function reviewResume() {
+  const resume = resumeInput.value
+  const jobDescription = jobInput.value
+  const userInstructions = instructionsInput.value
+
+  // Check if resume is empty
+
+  if (resume.trim() === '') {
+    alert('Please paste your resume first.')
+
     return
   }
-  sendButton.disabled = true
-  chatBox.innerHTML += `
-    <div class="user-message">
-        ${message}
-    </div>
-`
-  chatBox.scrollTop = chatBox.scrollHeight
-  chatBox.innerHTML += `<p id="loading"><strong>AI:</strong> Thinking...</p>`
+
+  // Disable button while AI is working
+
+  reviewButton.disabled = true
+
+  // Show loading message
+
+  resultBox.innerHTML = `
+        <div class="loading">
+            Analyzing your resume...
+        </div>
+    `
 
   try {
-    const response = await fetch('http://127.0.0.1:8000/chat', {
+    const response = await fetch('http://127.0.0.1:8000/review', {
       method: 'POST',
+
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message: message }),
+
+      body: JSON.stringify({
+        resume: resume,
+
+        job_description: jobDescription,
+
+        user_instructions: userInstructions,
+      }),
     })
+
+    // Check for server errors
+
     if (!response.ok) {
       throw new Error(`Server error: ${response.status}`)
     }
 
-    console.log('Response received:', response)
+    // Convert response to JSON
 
     const data = await response.json()
+    console.log(data.response)
+    // Display AI response
 
-    console.log('AI response:', data)
-    chatBox.innerHTML += `
-    <div class="ai-message">
-        ${marked.parse(data.response)}
-    </div>
-`
-    chatBox.innerHTML += marked.parse(data.response)
-    chatBox.scrollTop = chatBox.scrollHeight
+    resultBox.innerHTML = `
+            <div class="ai-message">
+                ${marked.parse(data.response)}
+            </div>
+        `
   } catch (error) {
     console.log('Error:', error)
-    chatBox.innerHTML += `<p><strong>AI:</strong> Sorry, something went wrong.</p>`
+
+    resultBox.innerHTML = `
+            <div class="error">
+                Something went wrong.
+                Please check that the backend is running.
+            </div>
+        `
   } finally {
-    document.getElementById('loading').remove()
-    sendButton.disabled = false
+    // Enable button again
+
+    reviewButton.disabled = false
   }
-  userInput.value = ''
 }
 
-async function clearChat() {
-  const response = await fetch('http://127.0.0.1:8000/clear', {
-    method: 'POST',
-  })
+// When user clicks Review Resume
 
-  if (!response.ok) {
-    console.log('Failed to clear chat')
-    return
-  }
-
-  chatBox.innerHTML = ''
-}
-
-sendButton.addEventListener('click', sendMessage)
-userInput.addEventListener('keydown', function (event) {
-  if (event.key === 'Enter') {
-    sendMessage()
-  }
-})
-clearButton.addEventListener('click', clearChat)
+reviewButton.addEventListener('click', reviewResume)
