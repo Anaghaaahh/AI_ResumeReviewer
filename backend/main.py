@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel,ConfigDict
 from groq import Groq
 from fastapi.middleware.cors import CORSMiddleware
+import json
 
 app = FastAPI()
 
@@ -17,6 +18,9 @@ app.add_middleware(
 load_dotenv()
 
 client = Groq()
+
+class StrictBaseModel(BaseModel):
+    model_config=ConfigDict(extra="forbid")
 
 def create_message():
     return [
@@ -233,6 +237,60 @@ many minor issues.
 Do not treat the absence of professional experience as a weakness
 for an internship or entry-level candidate.
 
+
+## FACTUAL GROUNDING FOR IMPROVEMENTS
+
+All resume improvements must be grounded strictly in information
+explicitly provided in the resume.
+
+When rewriting an existing bullet point:
+
+- Preserve every factual claim from the original bullet.
+- You may improve wording, clarity, conciseness, grammar, and action verbs.
+- Do not add technologies, frameworks, libraries, APIs, features,
+  responsibilities, users, metrics, performance results, deployments,
+  or achievements that are not explicitly supported by the resume.
+- Do not infer a technology from the type of project.
+- Do not infer implementation details from a project title.
+- Do not create numerical results.
+- If the bullet lacks enough information for a stronger rewrite,
+  produce a conservative rewrite rather than inventing details.
+- If additional information would improve the bullet, mention it as
+  a suggested piece of information to add only if the candidate
+  genuinely has it.
+
+The "improved" field must be a safer and clearer version of the
+original bullet, not a hypothetical version of what the project
+could have contained.
+
+
+## FACT VS SUGGESTION
+
+Never convert a possible improvement into a factual claim.
+
+When suggesting additional information, phrase it conditionally.
+
+Correct:
+"If you used React, mention it in the project description."
+
+Correct:
+"If the project has CRUD functionality, describe those operations."
+
+Incorrect:
+"Built the project using React."
+
+Incorrect:
+"Implemented CRUD functionality."
+
+The incorrect versions must never appear in the "improved" field
+unless the resume explicitly supports those facts.
+
+The "improved" field has a stricter evidence requirement than
+the "improvements" field. The improved bullet must contain only
+facts explicitly supported by the original resume.
+
+
+
 ## BULLET POINT IMPROVEMENTS
 
 Identify only weak or unclear bullet points that need improvement.
@@ -324,132 +382,149 @@ If no job description is provided:
 - Do not assign a Job Description Match score.
 - Do not assume or invent job requirements.
 
-## FINAL OUTPUT FORMAT
+## OUTPUT CONTENT REQUIREMENTS
 
-Present the review in the following order:
+## STRUCTURED OUTPUT REQUIREMENTS
 
-# Overall Score
 
-Display the final percentage.
 
-# Score Breakdown
+## FIELD POPULATION RULES
 
-For each applicable category, display:
+Required fields must always be populated with relevant information
+when the resume provides the information needed to evaluate them.
 
-- Projects: X/30
-- Technical Skills: X/25
-- Job Description Match: X/25
-- Experience: X/15
-- Achievements & Certifications: X/5
+If a job description is provided:
+- job_match must contain a JobMatch object.
+- Do not set job_match to null.
 
-Briefly explain the reasoning behind each score.
+If the resume contains projects:
+- project_analysis must contain an analysis for each relevant project.
+- Do not return an empty project_analysis list when projects are present.
 
-Do not display categories that are not applicable.
+If the resume contains bullet points that can reasonably be improved:
+- bullet_improvements should contain those bullets.
+- If no bullet genuinely needs improvement, return [].
 
-# Strengths
+ats_analysis should contain relevant ATS observations whenever
+the resume can be evaluated for ATS-related issues.
 
-List the strongest aspects of the resume.
+action_items should contain the highest-priority actionable
+recommendations based on the review.
 
-Focus on strengths that are supported by evidence in the resume.
 
-# Weaknesses & Improvements
+Do not use null or [] merely to avoid performing an analysis.
+Use null or [] only when the corresponding information genuinely
+does not apply or there is genuinely nothing to report.
 
-For each important weakness:
 
-Weakness:
-...
 
-Why:
-...
 
-Improvement:
-...
 
-Focus on high-impact weaknesses rather than minor issues.
 
-# ATS Analysis
+Every field defined in the response schema is required.
 
-Discuss:
+Never omit a schema field.
+
+If a field does not apply:
+- Use null for nullable fields.
+- Use an empty list [] for list fields when there is nothing to report.
+
+For example:
+- If no job description is provided, job_match must be null.
+- If no project analysis is needed, project_analysis must be [].
+- If no bullet points require improvement, bullet_improvements must be [].
+
+Do not omit any required field.
+
+Provide the following information:
+
+### Overall Score
+
+Calculate the overall percentage according to the scoring system above.
+
+### Score Breakdown
+
+Provide the score for every applicable category and briefly explain
+the reasoning behind each score.
+
+Do not include categories that are not applicable.
+
+### Strengths
+
+Identify the strongest aspects of the resume.
+
+Only include strengths supported by evidence in the resume.
+
+### Weaknesses
+
+For every important weakness, provide:
+
+- The weakness.
+- Why it is a weakness.
+- A specific and actionable improvement.
+
+Prioritize high-impact weaknesses rather than minor issues.
+
+### ATS Analysis
+
+Evaluate:
 
 - Alignment
 - Formatting
 - Keywords
 - Section headings
-- Readability and potential parsing issues
+- Readability
+- Potential parsing issues
 
-For each ATS issue, explain the improvement that should be made.
+For each significant ATS issue, explain how it could be improved.
 
-Do not treat comma-separated skills as an ATS problem unless
-there is a specific readability or parsing concern.
+### Job Description Match
 
-# Job Description Match
+Only provide this analysis when a job description is provided.
 
-Only include this section when a job description is provided.
-
-## Matched
-
-List important requirements and classify them as:
+Classify important requirements as:
 
 - Demonstrated
 - Listed but not demonstrated
+- Missing
 
-Only classify a requirement as demonstrated when there is
-clear evidence in the resume.
+Only classify a requirement as demonstrated when there is clear
+evidence in the resume.
 
-## Missing
+### Project Analysis
 
-List important requirements that are not mentioned in the resume.
+Analyze each project and provide:
 
-Do not assume that missing means the candidate does not
-possess the skill.
+- Strengths
+- Weaknesses
+- Improvements
 
-# Project Analysis
+Focus on technical relevance, implementation, clarity,
+candidate contribution, and alignment with the target role.
 
-For each project:
+### Bullet Point Improvements
 
-- What is strong.
-- What is weak.
-- How it can be improved.
+Only include bullet points that actually need improvement.
 
-Focus on:
+For each selected bullet, provide:
 
-- Technical relevance.
-- Implementation.
-- Clarity.
-- Evidence of the candidate's contribution.
-- Alignment with the target role when a job description is provided.
-
-Do not suggest technologies, features, or achievements that
-are not supported by the resume.
-
-# Bullet Point Improvements
-
-Only include bullet points that need improvement.
-
-For each:
-
-Original:
-...
-
-Problem:
-...
-
-Improved:
-...
+- Original
+- Problem
+- Improved
 
 Preserve the original facts and meaning.
 
-# Top 5 Action Items
+### Action Items
 
-Give the five most important changes the candidate should
-make first.
+Provide the five highest-priority changes the candidate should make
+to improve the resume.
 
-Prioritize changes that would have the greatest impact
-on the resume for the target role.
+Prioritize high-impact changes.
 
-Only recommend actions that are supported by the candidate's
-actual background or clearly framed as something to verify/add
-if genuinely applicable.
+Only recommend changes supported by the candidate's actual
+background, or clearly identify something as a future improvement
+that would require genuine experience.
+
 
 ## RESPONSE STYLE
 
@@ -469,10 +544,57 @@ if genuinely applicable.
 
 
 
-class ResumeRequest(BaseModel):
+class ResumeRequest(StrictBaseModel):
     resume: str
     job_description: str =""
     user_instructions: str=""
+
+
+class ScoreBreakdown(StrictBaseModel):
+    projects: int
+    skills: int
+    job_match: int | None
+    experience: int | None
+    achievements: int | None
+
+
+class ProjectAnalysis(StrictBaseModel):
+    project: str
+    strengths: list[str]
+    weaknesses: list[str]
+    improvements: list[str]
+
+
+class JobMatch(StrictBaseModel):
+    score: int
+    demonstrated: list[str]
+    listed_but_not_demonstrated: list[str]
+    missing: list[str]
+
+
+class BulletImprovement(StrictBaseModel):
+    original: str
+    problem: str
+    improved: str
+
+class Weakness(StrictBaseModel):
+    weakness:str
+    why:str
+    improvement:str
+
+
+class ResumeReview(StrictBaseModel):
+    overall_score: float
+    score_breakdown: ScoreBreakdown
+    strengths: list[str]
+    weaknesses: list[Weakness]
+    ats_analysis: list[str]
+    job_match: JobMatch | None
+    project_analysis: list[ProjectAnalysis]
+    bullet_improvements: list[BulletImprovement]
+    action_items: list[str]
+
+
 
 
 @app.get("/")
@@ -503,16 +625,25 @@ User instructions:
   })
 
     response = client.chat.completions.create(
-        model="openai/gpt-oss-20b",
-        messages=messages
+      model="openai/gpt-oss-20b",
+      messages=messages,
+      response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "resume_review",
+            "strict": True,
+            "schema": ResumeReview.model_json_schema()
+        }
+      }
     )
 
     ai_response = response.choices[0].message.content
+    result=json.loads(ai_response)
+    review=ResumeReview.model_validate(result)
 
 
 
-    return {
-        "response": ai_response
-    }
+
+    return review
 
 
